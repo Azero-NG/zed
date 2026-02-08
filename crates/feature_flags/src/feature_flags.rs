@@ -1,6 +1,7 @@
 mod flags;
 
 use std::cell::RefCell;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use std::sync::LazyLock;
 use std::time::Duration;
@@ -9,6 +10,7 @@ use std::{future::Future, pin::Pin, task::Poll};
 use futures::channel::oneshot;
 use futures::{FutureExt, select_biased};
 use gpui::{App, Context, Global, Subscription, Task, Window};
+use serde::Deserialize;
 
 pub use flags::*;
 
@@ -37,6 +39,85 @@ impl FeatureFlags {
 }
 
 impl Global for FeatureFlags {}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(default)]
+struct FeatureFlagsOverrides {
+    staff: Option<bool>,
+    flags: HashMap<String, bool>,
+}
+
+fn feature_flags_overrides_path() -> std::path::PathBuf {
+    paths::config_dir().join("feature_flags.json")
+}
+
+fn load_feature_flags_overrides() -> Option<FeatureFlagsOverrides> {
+    let feature_flags_overrides_path = feature_flags_overrides_path();
+    let overrides_content = match std::fs::read_to_string(&feature_flags_overrides_path) {
+        Ok(content) => content,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return None,
+        Err(error) => {
+            log::error!(
+                "failed to read feature flag overrides from {}: {error}",
+                feature_flags_overrides_path.display(),
+            );
+            return None;
+        }
+    };
+
+    match serde_json::from_str::<FeatureFlagsOverrides>(&overrides_content) {
+        Ok(overrides) => Some(overrides),
+        Err(error) => {
+            log::error!(
+                "failed to parse feature flag overrides from {}: {error}",
+                feature_flags_overrides_path.display(),
+            );
+            None
+        }
+    }
+}
+
+fn apply_feature_flags_overrides(
+    mut staff: bool,
+    flags: Vec<String>,
+    overrides: Option<FeatureFlagsOverrides>,
+) -> (bool, Vec<String>) {
+    let Some(overrides) = overrides else {
+        return (staff, flags);
+    };
+
+    if let Some(staff_override) = overrides.staff {
+        staff = staff_override;
+    }
+
+    let mut merged_flags: HashSet<String> = flags.into_iter().collect();
+    for (flag_name, enabled) in overrides.flags {
+        if enabled {
+            merged_flags.insert(flag_name);
+        } else {
+            merged_flags.remove(&flag_name);
+        }
+    }
+
+    let mut merged_flags: Vec<String> = merged_flags.into_iter().collect();
+    merged_flags.sort_unstable();
+
+    (staff, merged_flags)
+}
+
+fn set_feature_flags(staff: bool, flags: Vec<String>, cx: &mut App) {
+    let feature_flags = cx.default_global::<FeatureFlags>();
+    feature_flags.staff = staff;
+    feature_flags.flags = flags;
+}
+
+pub fn init(cx: &mut App) {
+    let Some(overrides) = load_feature_flags_overrides() else {
+        return;
+    };
+    let (staff, flags) = apply_feature_flags_overrides(false, Vec::new(), Some(overrides));
+    set_feature_flags(staff, flags, cx);
+}
 
 /// To create a feature flag, implement this trait on a trivial type and use it as
 /// a generic parameter when called [`FeatureFlagAppExt::has_flag`].
@@ -143,9 +224,9 @@ pub trait FeatureFlagAppExt {
 
 impl FeatureFlagAppExt for App {
     fn update_flags(&mut self, staff: bool, flags: Vec<String>) {
-        let feature_flags = self.default_global::<FeatureFlags>();
-        feature_flags.staff = staff;
-        feature_flags.flags = flags;
+        let (staff, flags) =
+            apply_feature_flags_overrides(staff, flags, load_feature_flags_overrides());
+        set_feature_flags(staff, flags, self);
     }
 
     fn set_staff(&mut self, staff: bool) {
@@ -241,5 +322,49 @@ impl Future for WaitForFlag {
             self.1.take();
             result.unwrap_or(false)
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{FeatureFlagsOverrides, apply_feature_flags_overrides};
+    use std::collections::HashMap;
+
+    #[test]
+    fn preserves_server_values_without_local_overrides() {
+        let (staff, flags) =
+            apply_feature_flags_overrides(false, vec!["server-flag".to_string()], None);
+
+        assert!(!staff);
+        assert_eq!(flags, vec!["server-flag".to_string()]);
+    }
+
+    #[test]
+    fn local_overrides_take_priority_over_server_values() {
+        let mut overridden_flags = HashMap::default();
+        overridden_flags.insert("server-only".to_string(), false);
+        overridden_flags.insert("local-only".to_string(), true);
+        overridden_flags.insert("split-diff".to_string(), true);
+
+        let overrides = FeatureFlagsOverrides {
+            staff: Some(true),
+            flags: overridden_flags,
+        };
+
+        let (staff, flags) = apply_feature_flags_overrides(
+            false,
+            vec!["server-only".to_string(), "diff-review".to_string()],
+            Some(overrides),
+        );
+
+        assert!(staff);
+        assert_eq!(
+            flags,
+            vec![
+                "diff-review".to_string(),
+                "local-only".to_string(),
+                "split-diff".to_string(),
+            ],
+        );
     }
 }

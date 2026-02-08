@@ -14,3 +14,7 @@ path = "src/feature_flags.rs"
 [dependencies]
 futures.workspace = true
 gpui.workspace = true
+log.workspace = true
+paths.workspace = true
+serde.workspace = true
+serde_json.workspace = true
