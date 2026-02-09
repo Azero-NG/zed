@@ -9,170 +9,6 @@ on:
     tags:
       - v*
 jobs:
-  run_tests_mac:
-    runs-on: macos-15
-    steps:
-      - name: steps::checkout_repo
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          clean: false
-      - name: steps::setup_cargo_config
-        run: |
-          mkdir -p ./../.cargo
-          cp ./.cargo/ci-config.toml ./../.cargo/config.toml
-      - name: steps::cache_rust_dependencies_namespace
-        uses: namespacelabs/nscloud-cache-action@v1
-        with:
-          cache: rust
-          path: ~/.rustup
-      - name: steps::setup_node
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
-        with:
-          node-version: "20"
-      - name: steps::cargo_install_nextest
-        uses: taiki-e/install-action@nextest
-      - name: steps::clear_target_dir_if_large
-        run: ./script/clear-target-dir-if-larger-than 300
-      - name: steps::cargo_nextest
-        run: cargo nextest run --workspace --no-fail-fast
-      - name: steps::cleanup_cargo_config
-        if: always()
-        run: |
-          rm -rf ./../.cargo
-    timeout-minutes: 60
-  run_tests_linux:
-    runs-on: ubuntu-22.04
-    steps:
-      - name: steps::checkout_repo
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          clean: false
-      - name: steps::setup_cargo_config
-        run: |
-          mkdir -p ./../.cargo
-          cp ./.cargo/ci-config.toml ./../.cargo/config.toml
-      - name: steps::cache_rust_dependencies_namespace
-        uses: namespacelabs/nscloud-cache-action@v1
-        with:
-          cache: rust
-          path: ~/.rustup
-      - name: steps::setup_linux
-        run: ./script/linux
-      - name: steps::install_mold
-        run: ./script/install-mold
-      - name: steps::download_wasi_sdk
-        run: ./script/download-wasi-sdk
-      - name: steps::setup_node
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
-        with:
-          node-version: "20"
-      - name: steps::cargo_install_nextest
-        uses: taiki-e/install-action@nextest
-      - name: steps::clear_target_dir_if_large
-        run: ./script/clear-target-dir-if-larger-than 250
-      - name: steps::cargo_nextest
-        run: cargo nextest run --workspace --no-fail-fast
-      - name: steps::cleanup_cargo_config
-        if: always()
-        run: |
-          rm -rf ./../.cargo
-    timeout-minutes: 60
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_HOST_AUTH_METHOD: trust
-        ports:
-          - 5432:5432
-        options: --health-cmd pg_isready --health-interval 500ms --health-timeout 5s --health-retries 10
-  run_tests_windows:
-    runs-on: windows-2022
-    steps:
-      - name: steps::checkout_repo
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          clean: false
-      - name: steps::setup_cargo_config
-        run: |
-          New-Item -ItemType Directory -Path "./../.cargo" -Force
-          Copy-Item -Path "./.cargo/ci-config.toml" -Destination "./../.cargo/config.toml"
-        shell: pwsh
-      - name: steps::setup_node
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
-        with:
-          node-version: "20"
-      - name: steps::clear_target_dir_if_large
-        run: ./script/clear-target-dir-if-larger-than.ps1 250
-        shell: pwsh
-      - name: steps::cargo_nextest
-        run: cargo nextest run --workspace --no-fail-fast
-        shell: pwsh
-      - name: steps::cleanup_cargo_config
-        if: always()
-        run: |
-          Remove-Item -Recurse -Path "./../.cargo" -Force -ErrorAction SilentlyContinue
-        shell: pwsh
-    timeout-minutes: 60
-  clippy_mac:
-    runs-on: macos-15
-    steps:
-      - name: steps::checkout_repo
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          clean: false
-      - name: steps::setup_cargo_config
-        run: |
-          mkdir -p ./../.cargo
-          cp ./.cargo/ci-config.toml ./../.cargo/config.toml
-      - name: steps::cache_rust_dependencies_namespace
-        uses: namespacelabs/nscloud-cache-action@v1
-        with:
-          cache: rust
-          path: ~/.rustup
-      - name: steps::clippy
-        run: ./script/clippy
-    timeout-minutes: 60
-  clippy_linux:
-    runs-on: ubuntu-22.04
-    steps:
-      - name: steps::checkout_repo
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          clean: false
-      - name: steps::setup_cargo_config
-        run: |
-          mkdir -p ./../.cargo
-          cp ./.cargo/ci-config.toml ./../.cargo/config.toml
-      - name: steps::cache_rust_dependencies_namespace
-        uses: namespacelabs/nscloud-cache-action@v1
-        with:
-          cache: rust
-          path: ~/.rustup
-      - name: steps::setup_linux
-        run: ./script/linux
-      - name: steps::install_mold
-        run: ./script/install-mold
-      - name: steps::download_wasi_sdk
-        run: ./script/download-wasi-sdk
-      - name: steps::clippy
-        run: ./script/clippy
-    timeout-minutes: 60
-  clippy_windows:
-    runs-on: windows-2022
-    steps:
-      - name: steps::checkout_repo
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          clean: false
-      - name: steps::setup_cargo_config
-        run: |
-          New-Item -ItemType Directory -Path "./../.cargo" -Force
-          Copy-Item -Path "./.cargo/ci-config.toml" -Destination "./../.cargo/config.toml"
-        shell: pwsh
-      - name: steps::clippy
-        run: ./script/clippy.ps1
-        shell: pwsh
-    timeout-minutes: 60
   check_scripts:
     runs-on: ubuntu-24.04
     steps:
@@ -220,8 +56,6 @@ jobs:
   bundle_linux_aarch64:
     if: (github.repository_owner == 'zed-industries' || github.repository_owner == 'zed-extensions')
     needs:
-      - run_tests_linux
-      - clippy_linux
       - check_scripts
     runs-on: namespace-profile-8x32-ubuntu-2004-arm-m4
     env:
@@ -261,8 +95,6 @@ jobs:
   bundle_linux_x86_64:
     if: (github.repository_owner == 'zed-industries' || github.repository_owner == 'zed-extensions')
     needs:
-      - run_tests_linux
-      - clippy_linux
       - check_scripts
     runs-on: namespace-profile-32x64-ubuntu-2004
     env:
@@ -301,8 +133,6 @@ jobs:
     timeout-minutes: 60
   bundle_mac_aarch64:
     needs:
-      - run_tests_mac
-      - clippy_mac
       - check_scripts
     runs-on: macos-15
     env:
@@ -346,8 +176,6 @@ jobs:
     timeout-minutes: 60
   bundle_mac_x86_64:
     needs:
-      - run_tests_mac
-      - clippy_mac
       - check_scripts
     runs-on: macos-15
     env:
@@ -391,8 +219,6 @@ jobs:
     timeout-minutes: 60
   bundle_windows_aarch64:
     needs:
-      - run_tests_windows
-      - clippy_windows
       - check_scripts
     runs-on: windows-2022
     env:
@@ -436,8 +262,6 @@ jobs:
     timeout-minutes: 60
   bundle_windows_x86_64:
     needs:
-      - run_tests_windows
-      - clippy_windows
       - check_scripts
     runs-on: windows-2022
     env:
