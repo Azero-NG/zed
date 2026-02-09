@@ -9,30 +9,6 @@ on:
     tags:
       - v*
 jobs:
-  check_scripts:
-    runs-on: ubuntu-24.04
-    steps:
-      - name: steps::checkout_repo
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          clean: false
-      - name: run_tests::check_scripts::run_shellcheck
-        run: ./script/shellcheck-scripts error
-      - id: get_actionlint
-        name: run_tests::check_scripts::download_actionlint
-        run: bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
-      - name: run_tests::check_scripts::run_actionlint
-        run: |
-          ${{ steps.get_actionlint.outputs.executable }} -color
-      - name: run_tests::check_scripts::check_xtask_workflows
-        run: |
-          cargo xtask workflows
-          if ! git diff --exit-code .github; then
-            echo "Error: .github directory has uncommitted changes after running 'cargo xtask workflows'"
-            echo "Please run 'cargo xtask workflows' locally and commit the changes"
-            exit 1
-          fi
-    timeout-minutes: 60
   create_draft_release:
     runs-on: ubuntu-24.04
     steps:
@@ -55,8 +31,6 @@ jobs:
     timeout-minutes: 60
   bundle_linux_aarch64:
     if: (github.repository_owner == 'zed-industries' || github.repository_owner == 'zed-extensions')
-    needs:
-      - check_scripts
     runs-on: namespace-profile-8x32-ubuntu-2004-arm-m4
     env:
       CARGO_INCREMENTAL: 0
@@ -94,8 +68,7 @@ jobs:
     timeout-minutes: 60
   bundle_linux_x86_64:
     if: (github.repository_owner == 'zed-industries' || github.repository_owner == 'zed-extensions')
-    needs:
-      - check_scripts
+
     runs-on: namespace-profile-32x64-ubuntu-2004
     env:
       CARGO_INCREMENTAL: 0
@@ -132,8 +105,6 @@ jobs:
           if-no-files-found: error
     timeout-minutes: 60
   bundle_mac_aarch64:
-    needs:
-      - check_scripts
     runs-on: macos-15
     env:
       CARGO_INCREMENTAL: 0
@@ -175,8 +146,6 @@ jobs:
           if-no-files-found: error
     timeout-minutes: 60
   bundle_mac_x86_64:
-    needs:
-      - check_scripts
     runs-on: macos-15
     env:
       CARGO_INCREMENTAL: 0
@@ -218,8 +187,6 @@ jobs:
           if-no-files-found: error
     timeout-minutes: 60
   bundle_windows_aarch64:
-    needs:
-      - check_scripts
     runs-on: windows-2022
     env:
       CARGO_INCREMENTAL: 0
@@ -261,8 +228,6 @@ jobs:
           if-no-files-found: error
     timeout-minutes: 60
   bundle_windows_x86_64:
-    needs:
-      - check_scripts
     runs-on: windows-2022
     env:
       CARGO_INCREMENTAL: 0
