@@ -329,6 +329,10 @@ impl FeatureFlag for SplitDiffFeatureFlag {
     fn enabled_for_staff() -> bool {
         true
     }
+
+    fn enabled_for_all() -> bool {
+        true
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Action, Default)]
