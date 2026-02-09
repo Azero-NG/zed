@@ -381,17 +381,6 @@ jobs:
           GITHUB_TOKEN: ${{ steps.get-app-token.outputs.token }}
   push_release_update_notification:
     needs:
-      - create_draft_release
-      - upload_release_assets
-      - validate_release_assets
-      - auto_release_preview
-      - run_tests_mac
-      - run_tests_linux
-      - run_tests_windows
-      - clippy_mac
-      - clippy_linux
-      - clippy_windows
-      - check_scripts
       - bundle_linux_aarch64
       - bundle_linux_x86_64
       - bundle_mac_aarch64
