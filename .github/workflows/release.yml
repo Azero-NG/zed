@@ -10,7 +10,7 @@ on:
       - v*
 jobs:
   run_tests_mac:
-    runs-on: namespace-profile-mac-large
+    runs-on: macos-15
     steps:
       - name: steps::checkout_repo
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -41,7 +41,7 @@ jobs:
           rm -rf ./../.cargo
     timeout-minutes: 60
   run_tests_linux:
-    runs-on: namespace-profile-16x32-ubuntu-2204
+    runs-on: ubuntu-22.04
     steps:
       - name: steps::checkout_repo
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -86,7 +86,7 @@ jobs:
           - 5432:5432
         options: --health-cmd pg_isready --health-interval 500ms --health-timeout 5s --health-retries 10
   run_tests_windows:
-    runs-on: self-32vcpu-windows-2022
+    runs-on: windows-2022
     steps:
       - name: steps::checkout_repo
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -114,7 +114,7 @@ jobs:
         shell: pwsh
     timeout-minutes: 60
   clippy_mac:
-    runs-on: namespace-profile-mac-large
+    runs-on: macos-15
     steps:
       - name: steps::checkout_repo
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -133,7 +133,7 @@ jobs:
         run: ./script/clippy
     timeout-minutes: 60
   clippy_linux:
-    runs-on: namespace-profile-16x32-ubuntu-2204
+    runs-on: ubuntu-22.04
     steps:
       - name: steps::checkout_repo
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -158,7 +158,7 @@ jobs:
         run: ./script/clippy
     timeout-minutes: 60
   clippy_windows:
-    runs-on: self-32vcpu-windows-2022
+    runs-on: windows-2022
     steps:
       - name: steps::checkout_repo
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -174,7 +174,7 @@ jobs:
         shell: pwsh
     timeout-minutes: 60
   check_scripts:
-    runs-on: namespace-profile-2x4-ubuntu-2404
+    runs-on: ubuntu-24.04
     steps:
       - name: steps::checkout_repo
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -198,7 +198,7 @@ jobs:
           fi
     timeout-minutes: 60
   create_draft_release:
-    runs-on: namespace-profile-2x4-ubuntu-2404
+    runs-on: ubuntu-24.04
     steps:
       - name: steps::checkout_repo
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -218,6 +218,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     timeout-minutes: 60
   bundle_linux_aarch64:
+    if: (github.repository_owner == 'zed-industries' || github.repository_owner == 'zed-extensions')
     needs:
       - run_tests_linux
       - clippy_linux
@@ -258,6 +259,7 @@ jobs:
           if-no-files-found: error
     timeout-minutes: 60
   bundle_linux_x86_64:
+    if: (github.repository_owner == 'zed-industries' || github.repository_owner == 'zed-extensions')
     needs:
       - run_tests_linux
       - clippy_linux
@@ -302,7 +304,7 @@ jobs:
       - run_tests_mac
       - clippy_mac
       - check_scripts
-    runs-on: namespace-profile-mac-large
+    runs-on: macos-15
     env:
       CARGO_INCREMENTAL: 0
       ZED_CLIENT_CHECKSUM_SEED: ${{ secrets.ZED_CLIENT_CHECKSUM_SEED }}
@@ -347,7 +349,7 @@ jobs:
       - run_tests_mac
       - clippy_mac
       - check_scripts
-    runs-on: namespace-profile-mac-large
+    runs-on: macos-15
     env:
       CARGO_INCREMENTAL: 0
       ZED_CLIENT_CHECKSUM_SEED: ${{ secrets.ZED_CLIENT_CHECKSUM_SEED }}
@@ -392,7 +394,7 @@ jobs:
       - run_tests_windows
       - clippy_windows
       - check_scripts
-    runs-on: self-32vcpu-windows-2022
+    runs-on: windows-2022
     env:
       CARGO_INCREMENTAL: 0
       ZED_CLIENT_CHECKSUM_SEED: ${{ secrets.ZED_CLIENT_CHECKSUM_SEED }}
@@ -437,7 +439,7 @@ jobs:
       - run_tests_windows
       - clippy_windows
       - check_scripts
-    runs-on: self-32vcpu-windows-2022
+    runs-on: windows-2022
     env:
       CARGO_INCREMENTAL: 0
       ZED_CLIENT_CHECKSUM_SEED: ${{ secrets.ZED_CLIENT_CHECKSUM_SEED }}
@@ -486,7 +488,7 @@ jobs:
       - bundle_mac_x86_64
       - bundle_windows_aarch64
       - bundle_windows_x86_64
-    runs-on: namespace-profile-4x8-ubuntu-2204
+    runs-on: ubuntu-22.04
     steps:
       - name: release::download_workflow_artifacts
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
@@ -517,7 +519,7 @@ jobs:
   validate_release_assets:
     needs:
       - upload_release_assets
-    runs-on: namespace-profile-2x4-ubuntu-2404
+    runs-on: ubuntu-24.04
     steps:
       - name: release::validate_release_assets
         run: |
@@ -541,7 +543,7 @@ jobs:
     needs:
       - validate_release_assets
     if: startsWith(github.ref, 'refs/tags/v') && endsWith(github.ref, '-pre') && !endsWith(github.ref, '.0-pre')
-    runs-on: namespace-profile-2x4-ubuntu-2404
+    runs-on: ubuntu-24.04
     steps:
       - id: get-app-token
         name: steps::authenticate_as_zippy
@@ -573,7 +575,7 @@ jobs:
       - bundle_windows_aarch64
       - bundle_windows_x86_64
     if: always()
-    runs-on: namespace-profile-2x4-ubuntu-2404
+    runs-on: ubuntu-24.04
     steps:
       - id: generate-webhook-message
         name: release::generate_slack_message
